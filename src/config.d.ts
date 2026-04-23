@@ -1,3 +1,9 @@
+declare type DesktopServer = {
+  id: string;
+  label: string;
+  url: string;
+};
+
 declare type DesktopConfig = {
   firstLaunch: boolean;
   customFrame: boolean;
@@ -12,4 +18,6 @@ declare type DesktopConfig = {
     height: number;
     isMaximised: boolean;
   };
+  servers: DesktopServer[];
+  activeServerId: string;
 };
