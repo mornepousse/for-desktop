@@ -11,7 +11,13 @@ import {
 
 import windowIconAsset from "../../assets/desktop/icon.png?asset";
 
-import { config, getActiveServer, setActiveServer } from "./config";
+import {
+  DEFAULT_SERVER,
+  config,
+  getActiveServer,
+  isSafeHttpUrl,
+  setActiveServer,
+} from "./config";
 import { updateTrayMenu } from "./tray";
 
 // global reference to main window
@@ -22,15 +28,31 @@ export let mainWindow: BrowserWindow;
  *   1. `--force-server <url>` CLI switch (session-only, does not persist).
  *   2. The active server from the persistent config.
  *
+ * Each candidate is validated against `isSafeHttpUrl` — only http(s) passes.
+ * A failed candidate is logged and skipped; the function falls back all the
+ * way to `DEFAULT_SERVER` rather than throw, so a malformed persisted entry
+ * cannot brick the app (and cannot smuggle a `javascript:` / `file:` URL
+ * into `mainWindow.loadURL`).
+ *
  * Returning a fresh URL on each call lets the navigation guard in main.ts
  * (`will-navigate`) pick up the new origin after `switchToServer` changes
  * the active entry.
  */
 export function getBuildUrl(): URL {
   if (app.commandLine.hasSwitch("force-server")) {
-    return new URL(app.commandLine.getSwitchValue("force-server"));
+    const override = app.commandLine.getSwitchValue("force-server");
+    if (isSafeHttpUrl(override)) return new URL(override);
+    console.warn(
+      `[switcher] --force-server URL rejected (not http/https): ${override}`,
+    );
   }
-  return new URL(getActiveServer().url);
+
+  const active = getActiveServer();
+  if (isSafeHttpUrl(active.url)) return new URL(active.url);
+  console.warn(
+    `[switcher] active server URL rejected (not http/https): ${active.url}; falling back to ${DEFAULT_SERVER.url}`,
+  );
+  return new URL(DEFAULT_SERVER.url);
 }
 
 // internal window state

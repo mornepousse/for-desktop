@@ -9,11 +9,27 @@ import { destroyDiscordRpc, initDiscordRpc } from "./discordRpc";
 import { mainWindow } from "./window";
 
 // Default seed used on first launch and when the servers list is empty.
-const DEFAULT_SERVER: DesktopServer = {
+export const DEFAULT_SERVER: DesktopServer = {
   id: "default",
   label: "Stoat",
   url: "https://stoat.chat/app",
 };
+
+/**
+ * Accept only http(s) URLs. Anything else (javascript:, file:, data:, …) is
+ * rejected because the stored server URL is fed straight into
+ * `mainWindow.loadURL`, and an origin check alone does not prevent a hostile
+ * scheme from executing code in the main window context. Acts as the single
+ * chokepoint between persisted config and navigation.
+ */
+export function isSafeHttpUrl(candidate: string): boolean {
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 const schema = {
   firstLaunch: {
@@ -64,7 +80,15 @@ const schema = {
       properties: {
         id: { type: "string" } as JSONSchema.String,
         label: { type: "string" } as JSONSchema.String,
-        url: { type: "string" } as JSONSchema.String,
+        // Defense in depth: electron-store (via ajv) will refuse a
+        // `set("servers", …)` whose entries fail the pattern. The runtime
+        // chokepoint is isSafeHttpUrl() in getBuildUrl/addServer — users who
+        // hand-edit config.json can still slip bad schemes past ajv because
+        // the store does not re-validate on read.
+        url: {
+          type: "string",
+          pattern: "^https?://",
+        } as JSONSchema.String,
       },
       required: ["id", "label", "url"],
     },
@@ -164,9 +188,16 @@ export function setActiveServer(id: string): void {
 
 /**
  * Append a server to the list. Returns the newly-created entry (with a fresh
- * random id). Caller is responsible for URL validation at the UI layer.
+ * random id). Throws if the URL is not http(s) — validation lives here, not
+ * at the caller, so any future wiring (tray UI, IPC from renderer, deep
+ * links) inherits the chokepoint automatically.
  */
 export function addServer(input: { label: string; url: string }): DesktopServer {
+  if (!isSafeHttpUrl(input.url)) {
+    throw new Error(
+      `Refusing to add server with non-http(s) URL: ${input.url}`,
+    );
+  }
   const entry: DesktopServer = {
     id: randomUUID(),
     label: input.label,
