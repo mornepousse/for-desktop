@@ -7,7 +7,7 @@ import { autoLaunch } from "./native/autoLaunch";
 import { config } from "./native/config";
 import { initDiscordRpc } from "./native/discordRpc";
 import { initTray } from "./native/tray";
-import { BUILD_URL, createMainWindow, mainWindow } from "./native/window";
+import { createMainWindow, getBuildUrl, mainWindow } from "./native/window";
 
 // Squirrel-specific logic
 // create/remove shortcuts on Windows when installing / uninstalling
@@ -87,9 +87,11 @@ if (acquiredLock) {
 
   // ensure URLs launch in external context
   app.on("web-contents-created", (_, contents) => {
-    // prevent navigation out of build URL origin
+    // prevent navigation out of the active build URL's origin.
+    // `getBuildUrl()` is resolved per-event so switching servers updates
+    // the guard in lockstep with the new active origin.
     contents.on("will-navigate", (event, navigationUrl) => {
-      if (new URL(navigationUrl).origin !== BUILD_URL.origin) {
+      if (new URL(navigationUrl).origin !== getBuildUrl().origin) {
         event.preventDefault();
       }
     });
