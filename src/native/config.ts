@@ -97,6 +97,15 @@ const store = new Store({
 });
 
 /**
+ * Absolute path to the electron-store JSON file. Exposed so the tray can
+ * offer "Edit config.json" via shell.openPath — the file is always
+ * trusted (it's our own storage under app.getPath('userData')).
+ */
+export function getConfigPath(): string {
+  return (store as never as { path: string }).path;
+}
+
+/**
  * Return the list of configured servers. Reseeds with the default entry if the
  * config was corrupted or predates the switcher (backward-compat for users
  * upgrading from a version without `servers`).

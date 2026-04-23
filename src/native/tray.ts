@@ -1,10 +1,10 @@
-import { Menu, Tray, nativeImage } from "electron";
+import { Menu, Tray, nativeImage, shell } from "electron";
 
 import trayIconAsset from "../../assets/desktop/icon.png?asset";
 import macOsTrayIconAsset from "../../assets/desktop/iconTemplate.png?asset";
 import { version } from "../../package.json";
 
-import { getActiveServer, getServers } from "./config";
+import { getActiveServer, getConfigPath, getServers } from "./config";
 import { mainWindow, quitApp, switchToServer } from "./window";
 
 // internal tray state
@@ -70,12 +70,23 @@ export function updateTrayMenu() {
           })),
           { type: "separator" as const },
           {
-            // Phase 1a: no in-app UI for adding servers yet. Users edit
-            // the electron-store config.json by hand. Phase 1b will
-            // replace this with a modal window + IPC flow.
-            label: "Add / edit: see config.json",
+            // Phase 1a.1: open the electron-store JSON in the user's
+            // default editor so they can add/edit entries. Proper modal
+            // UI is deferred to phase 1b.
+            label: "Edit config.json…",
             type: "normal" as const,
-            enabled: false,
+            click: () => {
+              shell.openPath(getConfigPath());
+            },
+          },
+          {
+            // Rebuild the tray menu after the user saves the config,
+            // so new server entries appear without restarting the app.
+            // Does not touch the main window — the user still has to
+            // click the newly-added entry to load it.
+            label: "Reload server list",
+            type: "normal" as const,
+            click: updateTrayMenu,
           },
         ]),
       },
