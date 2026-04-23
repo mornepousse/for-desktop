@@ -11,18 +11,27 @@ import {
 
 import windowIconAsset from "../../assets/desktop/icon.png?asset";
 
-import { config } from "./config";
+import { config, getActiveServer, setActiveServer } from "./config";
 import { updateTrayMenu } from "./tray";
 
 // global reference to main window
 export let mainWindow: BrowserWindow;
 
-// currently in-use build
-export const BUILD_URL = new URL(
-  app.commandLine.hasSwitch("force-server")
-    ? app.commandLine.getSwitchValue("force-server")
-    : /*MAIN_WINDOW_VITE_DEV_SERVER_URL ??*/ "https://stoat.chat/app",
-);
+/**
+ * Resolve the URL the main window should point at. Priority:
+ *   1. `--force-server <url>` CLI switch (session-only, does not persist).
+ *   2. The active server from the persistent config.
+ *
+ * Returning a fresh URL on each call lets the navigation guard in main.ts
+ * (`will-navigate`) pick up the new origin after `switchToServer` changes
+ * the active entry.
+ */
+export function getBuildUrl(): URL {
+  if (app.commandLine.hasSwitch("force-server")) {
+    return new URL(app.commandLine.getSwitchValue("force-server"));
+  }
+  return new URL(getActiveServer().url);
+}
 
 // internal window state
 let shouldQuit = false;
@@ -84,7 +93,7 @@ export function createMainWindow() {
   }
 
   // load the entrypoint
-  mainWindow.loadURL(BUILD_URL.toString());
+  mainWindow.loadURL(getBuildUrl().toString());
 
   // minimise window to tray
   mainWindow.on("close", (event) => {
@@ -198,6 +207,23 @@ export function createMainWindow() {
 
   // let i = 0;
   // setInterval(() => setBadgeCount((++i % 30) + 1), 1000);
+}
+
+/**
+ * Switch the active server and reload the main window.
+ *
+ * Persists the selection via `setActiveServer`, then calls
+ * `mainWindow.loadURL` with the freshly-resolved build URL. The
+ * `will-navigate` guard in main.ts reads `getBuildUrl().origin` at
+ * navigation time, so it automatically pins to the new origin after
+ * the reload. `--force-server` takes precedence and is not affected.
+ */
+export function switchToServer(id: string): void {
+  setActiveServer(id);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.loadURL(getBuildUrl().toString());
+  }
+  updateTrayMenu();
 }
 
 /**
