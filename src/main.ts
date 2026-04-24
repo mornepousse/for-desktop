@@ -6,6 +6,7 @@ import started from "electron-squirrel-startup";
 import { autoLaunch } from "./native/autoLaunch";
 import { config } from "./native/config";
 import { initDiscordRpc } from "./native/discordRpc";
+import { wireGifboxRewrite } from "./native/gifboxRewrite";
 import { initTray } from "./native/tray";
 import { createMainWindow, getBuildUrl, mainWindow } from "./native/window";
 
@@ -53,6 +54,7 @@ if (acquiredLock) {
 
     initTray();
     initDiscordRpc();
+    wireGifboxRewrite();
 
     // Windows specific fix for notifications
     if (process.platform === "win32") {
