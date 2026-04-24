@@ -103,6 +103,16 @@ export function updateTrayMenu() {
         },
       },
       {
+        // `mainWindow.setMenu(null)` strips Electron's default menu,
+        // which removes the F12 / Ctrl+Shift+I accelerators for DevTools.
+        // Expose a tray entry instead so users can still inspect the
+        // renderer (needed today to set localStorage overrides like
+        // `stoat.instance.gifboxUrl` on self-host deployments).
+        label: "Toggle DevTools",
+        type: "normal",
+        click: () => mainWindow.webContents.toggleDevTools(),
+      },
+      {
         label: "Quit App",
         type: "normal",
         click: quitApp,
