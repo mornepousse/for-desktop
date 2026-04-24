@@ -32,7 +32,7 @@
           url = "https://github.com/mornepousse/for-desktop/releases/download/${releaseTag}/Stoat-linux-x64-${version}.zip";
           # Populated after `gh release upload`. Replace with the real hash on
           # first update; `nix build` will print the expected value on mismatch.
-          hash = "sha256-LlfhdumhrBDUnS9kKexINRaDsLVnKhwgtdf/NYppTtY=";
+          hash = "sha256-iLSDRp2wnw/UEvIV1zxicccxZYNlIlOwOseI2nPKyoQ=";
         };
 
         # Runtime libs the Electron binary loads via dlopen. Keep in sync with
